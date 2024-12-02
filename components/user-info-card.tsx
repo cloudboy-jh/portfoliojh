@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,30 @@ interface UserInfoCardProps {
 export function UserInfoCard({ user, onUpdate }: UserInfoCardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedUser, setEditedUser] = useState(user)
+  const [tempAvatarUrl, setTempAvatarUrl] = useState<string | null>(null)
+
+  // Cleanup temporary URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (tempAvatarUrl) {
+        URL.revokeObjectURL(tempAvatarUrl)
+      }
+    }
+  }, [tempAvatarUrl])
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Revoke previous temporary URL if it exists
+      if (tempAvatarUrl) {
+        URL.revokeObjectURL(tempAvatarUrl)
+      }
+      // Create new temporary URL
+      const newTempUrl = URL.createObjectURL(file)
+      setTempAvatarUrl(newTempUrl)
+      setEditedUser({ ...editedUser, avatarUrl: newTempUrl })
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +60,10 @@ export function UserInfoCard({ user, onUpdate }: UserInfoCardProps) {
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="flex flex-row items-center gap-4">
         <Avatar className="w-16 h-16">
-          <AvatarImage src={user.avatarUrl} alt={user.name} />
+          <AvatarImage 
+            src={tempAvatarUrl || user.avatarUrl} 
+            alt={user.name} 
+          />
           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div>
@@ -90,6 +117,24 @@ export function UserInfoCard({ user, onUpdate }: UserInfoCardProps) {
                   onChange={(e) => setEditedUser({ ...editedUser, avatarUrl: e.target.value })}
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="avatar">Avatar Image</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleAvatarUpload}
+                  className="cursor-pointer"
+                />
+                {tempAvatarUrl && (
+                  <div className="mt-2">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage src={tempAvatarUrl} alt="Preview" />
+                      <AvatarFallback>{editedUser.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                )}
               </div>
               <Button type="submit">Save Changes</Button>
             </form>
